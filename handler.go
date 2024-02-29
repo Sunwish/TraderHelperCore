@@ -35,6 +35,9 @@ func addFavoriteStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	favoriteStocks[newStock.Code] = newStock
+
+	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
+
 	// 打印：成功添加 newStock 到自选股列表
 	fmt.Println(len(favoriteStocks), "成功添加自选股", newStock)
 }
@@ -64,6 +67,9 @@ func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
 			stock.BreakDown = newStock.BreakDown
 		}
 		favoriteStocks[stock.Code] = stock
+
+		common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
+
 		fmt.Println(len(favoriteStocks), "成功更新自选股", oldStock, "→", stock)
 	} else {
 		fmt.Println(len(favoriteStocks), "指定要更新的自选股", newStock.Code, "不存在")
@@ -104,6 +110,9 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 
 	delete(favoriteStocks, stock.Code)
 	delete(stocksData, stock.Code)
+
+	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
+
 	fmt.Println(len(favoriteStocks), "成功删除自选股", stock.Code)
 }
 

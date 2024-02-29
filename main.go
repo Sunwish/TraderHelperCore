@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 )
@@ -22,10 +23,10 @@ var (
 	checkInterval   = flag.Int("checkInterval", 5, "Interval of checking latest stock data")
 )
 
+var dataFileName = "favoriteStocks.json"
 var favoriteStocks = make(map[string]common.Stock)           // 用于存储自选股列表
 var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
-var tickerDuration = 3 * time.Second
 var notifier = notifiers.NewLogNotifier()
 var tickerDuration time.Duration
 
@@ -52,9 +53,11 @@ func main() {
 		fmt.Println("Pushdeer notify configuration is disabled.")
 	}
 
+	// 载入自选股列表
+	favoriteStocks, _ = common.LoadFavoriteStocksFromFile(path.Join(*dataDirectory, dataFileName))
+
 	// 初始化ticker
 	ticker := time.NewTicker(tickerDuration)
-
 	// 创建一个goroutine处理定时任务
 	go func() {
 		for range ticker.C {

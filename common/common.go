@@ -1,5 +1,12 @@
 package common
 
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path"
+)
+
 type Stock struct {
 	Code      string
 	BreakUp   float64 // 上破价
@@ -57,4 +64,44 @@ func GetPrefixTypeByCode(code string) PrefixType {
 		// 无法识别该代码所属的交易所
 		return ""
 	}
+}
+
+func SaveFavoriteStocksToFile(favoriteStocks map[string]Stock, outputDirectory string, outputFileName string) error {
+	// 将map转换为json字节流
+	jsonBytes, err := json.MarshalIndent(favoriteStocks, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal favorite stocks: %w", err)
+	}
+
+	// 创建目录（如果不存在）
+	err = os.MkdirAll(outputDirectory, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// 将json字节写入到指定的文件路径
+	err = os.WriteFile(path.Join(outputDirectory, outputFileName), jsonBytes, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
+}
+
+func LoadFavoriteStocksFromFile(filePath string) (map[string]Stock, error) {
+	emptyMap := make(map[string]Stock)
+	// 读取json文件内容
+	jsonBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return emptyMap, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var favoriteStocks map[string]Stock
+	// 反序列化json字节到map
+	err = json.Unmarshal(jsonBytes, &favoriteStocks)
+	if err != nil {
+		return emptyMap, fmt.Errorf("failed to unmarshal json: %w", err)
+	}
+
+	return favoriteStocks, nil
 }
