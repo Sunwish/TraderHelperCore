@@ -2,19 +2,19 @@ package urlBuilder
 
 import "TraderHelperCore/common"
 
-type TencentUrlBuilder struct {
-	UrlBase string
-	Ext     string
+type tencentUrlBuilder struct {
+	urlBase string
+	ext     string
 }
 
-func NewTencentUrlBuilder(urlBase string, ext string) *TencentUrlBuilder {
-	return &TencentUrlBuilder{
-		UrlBase: urlBase,
-		Ext:     ext,
+func NewTencentUrlBuilder(urlBase string, ext string) *tencentUrlBuilder {
+	return &tencentUrlBuilder{
+		urlBase: urlBase,
+		ext:     ext,
 	}
 }
 
-func (t *TencentUrlBuilder) Build(dataType common.DataType, prefixType common.PrefixType, code string) string {
+func (t *tencentUrlBuilder) Build(dataType common.DataType, prefixType common.PrefixType, code string) string {
 	var prefix string
 	switch prefixType {
 	case common.SH:
@@ -24,5 +24,5 @@ func (t *TencentUrlBuilder) Build(dataType common.DataType, prefixType common.Pr
 	default:
 		break
 	}
-	return t.UrlBase + prefix + code + t.Ext
+	return t.urlBase + prefix + code + t.ext
 }

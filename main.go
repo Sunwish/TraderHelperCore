@@ -16,10 +16,11 @@ import (
 var favoriteStocks = make(map[string]common.Stock)           // 用于存储自选股列表
 var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
+var tickerDuration = 3 * time.Second
 
 func main() {
 	// 初始化ticker
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(tickerDuration)
 
 	// 创建一个goroutine处理定时任务
 	go func() {
@@ -71,5 +72,16 @@ func main() {
 }
 
 func fetchAndUpdateStockPrice(stock common.Stock) {
-	stocksData[stock.Code] = ds.GetData(stock.Code)
+	// fetch
+	newData := ds.GetData(stock.Code)
+	// update
+	stocksData[stock.Code] = newData
+	// 判断上破下破
+	stockConfig := favoriteStocks[stock.Code]
+	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
+		fmt.Println(stock.Code, newData.LastPrice, "上破", stockConfig.BreakUp)
+	}
+	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
+		fmt.Println(stock.Code, newData.LastPrice, "下破", stockConfig.BreakDown)
+	}
 }

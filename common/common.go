@@ -10,9 +10,9 @@ type StockData struct {
 	DataType  DataType
 	Code      string
 	Name      string
-	LastPrice string // 最新价
-	LastDate  string // 最新时间
-	LastTime  string // 最新时间
+	LastPrice float64 // 最新价
+	LastDate  string  // 最新时间
+	LastTime  string  // 最新时间
 }
 
 type DataType int
