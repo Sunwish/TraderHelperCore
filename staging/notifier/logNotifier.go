@@ -1,11 +1,14 @@
 package notifier
 
-import "fmt"
+import (
+	"TraderHelperCore/api"
+	"fmt"
+)
 
 type logNotifier struct {
 }
 
-func NewLogNotifier() *logNotifier {
+func NewLogNotifier() api.Notifier {
 	return &logNotifier{}
 }
 

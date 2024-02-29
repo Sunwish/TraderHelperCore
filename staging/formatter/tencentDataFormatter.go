@@ -1,6 +1,7 @@
 package fomatter
 
 import (
+	"TraderHelperCore/api"
 	"TraderHelperCore/common"
 	"regexp"
 	"strconv"
@@ -11,7 +12,7 @@ type tencentDataFormatter struct {
 	regex *regexp.Regexp
 }
 
-func NewTencentDataFormatter() *tencentDataFormatter {
+func NewTencentDataFormatter() api.Formatter {
 	return &tencentDataFormatter{
 		regex: regexp.MustCompile("\".+?\""),
 	}

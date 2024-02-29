@@ -1,13 +1,16 @@
 package urlBuilder
 
-import "TraderHelperCore/common"
+import (
+	"TraderHelperCore/api"
+	"TraderHelperCore/common"
+)
 
 type tencentUrlBuilder struct {
 	urlBase string
 	ext     string
 }
 
-func NewTencentUrlBuilder(urlBase string, ext string) *tencentUrlBuilder {
+func NewTencentUrlBuilder(urlBase string, ext string) api.UrlBuilder {
 	return &tencentUrlBuilder{
 		urlBase: urlBase,
 		ext:     ext,
