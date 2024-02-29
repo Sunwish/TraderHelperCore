@@ -2,6 +2,7 @@ package main
 
 import (
 	"TraderHelperCore/common"
+	"TraderHelperCore/staging/dataSource"
 	"context"
 	"fmt"
 	"log"
@@ -12,11 +13,13 @@ import (
 	"time"
 )
 
-var favoriteStocks = make(map[string]common.Stock) // 用于存储自选股列表
+var favoriteStocks = make(map[string]common.Stock)           // 用于存储自选股列表
+var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
+var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
 
 func main() {
 	// 初始化ticker
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(15 * time.Second)
 
 	// 创建一个goroutine处理定时任务
 	go func() {
@@ -35,6 +38,7 @@ func main() {
 	mux.HandleFunc("/get_favorite_stocks", getFavoriteStocks)
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
+	mux.HandleFunc("/test/force_fetch", test_forceFetch)
 
 	server := &http.Server{
 		Addr:    ":9888",
@@ -64,4 +68,8 @@ func main() {
 	}
 
 	fmt.Println("Server stopped.")
+}
+
+func fetchAndUpdateStockPrice(stock common.Stock) {
+	stocksData[stock.Code] = ds.GetData(stock.Code)
 }

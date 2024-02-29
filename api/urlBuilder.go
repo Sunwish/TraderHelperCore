@@ -1,9 +1,9 @@
-package urlBuilder
+package api
 
 import (
 	"TraderHelperCore/common"
 )
 
-type UrlBuilderInterface interface {
+type UrlBuilder interface {
 	Build(dataType common.DataType, prefixType common.PrefixType, code string) string
 }

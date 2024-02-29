@@ -64,22 +64,10 @@ func getFavoriteStocks(w http.ResponseWriter, r *http.Request) {
 	w.Write(stocksJson)
 }
 
-func getFavoriteStockData(stock common.Stock) common.StockData {
-	return common.StockData{}
-}
-
 func getFavoriteStocksData(w http.ResponseWriter, r *http.Request) {
-	// 遍历favoriteStocks，调用getFavoriteStockData获得
-	var stockDatas []common.StockData
-	for _, stock := range favoriteStocks {
-		// 调用getStockData获取stockData
-		stockData := getFavoriteStockData(stock)
-		stockDatas = append(stockDatas, stockData)
-	}
-	// 序列化并返回favoriteStocks
-	stockDatasJson, _ := json.Marshal(stockDatas)
+	stocksJson, _ := json.Marshal(stocksData)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(stockDatasJson)
+	w.Write(stocksJson)
 }
 
 func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
@@ -88,18 +76,18 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newStock common.Stock
-	err := json.NewDecoder(r.Body).Decode(&newStock)
+	var stock common.Stock
+	err := json.NewDecoder(r.Body).Decode(&stock)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	delete(favoriteStocks, newStock.Code)
-	fmt.Println(len(favoriteStocks), "成功删除自选股", newStock.Code)
+	delete(favoriteStocks, stock.Code)
+	delete(stocksData, stock.Code)
+	fmt.Println(len(favoriteStocks), "成功删除自选股", stock.Code)
 }
 
-func fetchAndUpdateStockPrice(stock common.Stock) {
-	// 实现获取最新股价并更新到stock.CurrentPrice的功能
-	// ...
+func test_forceFetch(w http.ResponseWriter, r *http.Request) {
+	stocksData["600123"] = ds.GetData("600123")
 }
