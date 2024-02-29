@@ -3,6 +3,7 @@ package main
 import (
 	"TraderHelperCore/common"
 	"TraderHelperCore/staging/dataSource"
+	notifiers "TraderHelperCore/staging/notifier"
 	"context"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ var favoriteStocks = make(map[string]common.Stock)           // 用于存储自�
 var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
 var tickerDuration = 3 * time.Second
+var notifier = notifiers.NewLogNotifier()
 
 func main() {
 	// 初始化ticker
@@ -79,9 +81,9 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 	// 判断上破下破
 	stockConfig := favoriteStocks[stock.Code]
 	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
-		fmt.Println(stock.Code, newData.LastPrice, "上破", stockConfig.BreakUp)
+		notifier.Notify(fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name), fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp))
 	}
 	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
-		fmt.Println(stock.Code, newData.LastPrice, "下破", stockConfig.BreakDown)
+		notifier.Notify(fmt.Sprintf("[%s] %s 触发下破", newData.Code, newData.Name), fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown))
 	}
 }
