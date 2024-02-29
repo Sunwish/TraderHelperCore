@@ -5,6 +5,7 @@ import (
 	"TraderHelperCore/staging/dataSource"
 	notifiers "TraderHelperCore/staging/notifier"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,13 +15,36 @@ import (
 	"time"
 )
 
+var (
+	pushdeerBaseUrl = flag.String("pushdeerBaseUrl", "", "Pushdeer Notify Base URL")
+	pushdeerKey     = flag.String("pushdeerKey", "", "Pushdeer Notify Key")
+	dataDirectory   = flag.String("dataDirectory", "./data", "Data directory path")
+	checkInterval   = flag.Int("checkInterval", 5, "Interval of checking latest stock data")
+)
+
 var favoriteStocks = make(map[string]common.Stock)           // 用于存储自选股列表
 var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
 var tickerDuration = 3 * time.Second
 var notifier = notifiers.NewLogNotifier()
+var tickerDuration time.Duration
 
 func main() {
+
+	// 解析启动参数
+	fmt.Println("Parsing flags...")
+	flag.Parse()
+	tickerDuration = time.Duration(*checkInterval) * time.Second
+
+	// 配置Pushdeer通知
+	if pushdeerBaseUrl != nil && *pushdeerBaseUrl != "" && pushdeerKey != nil && *pushdeerKey != "" {
+		notifier = notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey)
+		notifier.Notify("[TraderHelper] 预警服务已成功启动", "")
+		fmt.Println("Pushdeer notify configuration is enabled. Test notification sent.")
+	} else {
+		fmt.Println("Pushdeer notify configuration is disabled.")
+	}
+
 	// 初始化ticker
 	ticker := time.NewTicker(tickerDuration)
 
@@ -33,16 +57,14 @@ func main() {
 		}
 	}()
 
-	// 设置HTTP路由和启动服务器
+	// 设置HTTP路由和处理函数
 	mux := http.NewServeMux()
-	// ...设置路由处理函数...
 	mux.HandleFunc("/add_favorite_stock", addFavoriteStock)
 	mux.HandleFunc("/update_break_price", updateBreakPrice)
 	mux.HandleFunc("/get_favorite_stocks", getFavoriteStocks)
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
 	mux.HandleFunc("/test/force_fetch", test_forceFetch)
-
 	server := &http.Server{
 		Addr:    ":9888",
 		Handler: mux,
@@ -61,10 +83,8 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
-
 	// 停止ticker
 	ticker.Stop()
-
 	// 关闭HTTP服务器
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server Shutdown: ", err)
