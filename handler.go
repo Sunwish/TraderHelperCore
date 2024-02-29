@@ -17,10 +17,23 @@ func addFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&newStock)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("非法的请求数据"))
+		return
+	}
+
+	// 检查favoriteStocks[newStock.Code]是否已存在
+	if _, ok := favoriteStocks[newStock.Code]; ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("该自选股已存在"))
 		return
 	}
 
 	// 验证并添加新自选股到favoriteStocks
+	if !isCodeValid(newStock.Code) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("自选股代码不合法"))
+		return
+	}
 	favoriteStocks[newStock.Code] = newStock
 	// 打印：成功添加 newStock 到自选股列表
 	fmt.Println(len(favoriteStocks), "成功添加自选股", newStock)
@@ -36,6 +49,7 @@ func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&newStock)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("非法的请求数据"))
 		return
 	}
 	// 从favoriteStocks中找到指定自选股并更新其上破价或下破价
@@ -52,8 +66,11 @@ func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
 		favoriteStocks[stock.Code] = stock
 		fmt.Println(len(favoriteStocks), "成功更新自选股", oldStock, "→", stock)
 	} else {
-		// 打印：指定的自选股不存在
 		fmt.Println(len(favoriteStocks), "指定要更新的自选股", newStock.Code, "不存在")
+
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("该自选股不存在"))
+		return
 	}
 }
 
@@ -73,6 +90,7 @@ func getFavoriteStocksData(w http.ResponseWriter, r *http.Request) {
 func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("非法的请求方式"))
 		return
 	}
 
@@ -80,6 +98,7 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&stock)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("非法的请求数据"))
 		return
 	}
 

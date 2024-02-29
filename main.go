@@ -30,6 +30,13 @@ var notifier = notifiers.NewLogNotifier()
 var tickerDuration time.Duration
 
 func main() {
+	// 异常处理
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from a panic:", r)
+			notifier.Notify("[TraderHelper] Recovered from a panic!", fmt.Sprint(r))
+		}
+	}()
 
 	// 解析启动参数
 	fmt.Println("Parsing flags...")
@@ -94,8 +101,19 @@ func main() {
 }
 
 func fetchAndUpdateStockPrice(stock common.Stock) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from a panic:", r)
+			// notifier.Notify("[TraderHelper] Recovered from a panic!", fmt.Sprint(r))
+		}
+	}()
+
 	// fetch
 	newData := ds.GetData(stock.Code)
+	if newData.LastPrice == 0 {
+		notifier.Notify(fmt.Sprintf("[%s] 数据获取失败", stock.Code), "请检查网络连接")
+		return
+	}
 	// update
 	stocksData[stock.Code] = newData
 	// 判断上破下破
@@ -106,4 +124,9 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
 		notifier.Notify(fmt.Sprintf("[%s] %s 触发下破", newData.Code, newData.Name), fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown))
 	}
+}
+
+func isCodeValid(code string) bool {
+	data := ds.GetData(code)
+	return data.LastPrice != 0
 }

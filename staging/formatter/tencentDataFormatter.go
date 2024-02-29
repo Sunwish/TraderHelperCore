@@ -37,6 +37,10 @@ func (tdf *tencentDataFormatter) Format(task common.FormatTask) common.StockData
 
 func (tdf *tencentDataFormatter) format(code string, dataStr string) common.StockData {
 	slices := strings.Split(dataStr, "~")
+	if len(slices) < 31 {
+		return common.StockData{}
+	}
+
 	lastPrice, _ := strconv.ParseFloat(slices[3], 64)
 	return common.StockData{
 		DataType:  common.STOCK,
