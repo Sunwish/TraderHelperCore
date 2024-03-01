@@ -21,7 +21,8 @@ var (
 	pushdeerBaseUrl = flag.String("pushdeerBaseUrl", "", "Pushdeer Notify Base URL")
 	pushdeerKey     = flag.String("pushdeerKey", "", "Pushdeer Notify Key")
 	dataDirectory   = flag.String("dataDirectory", "./data", "Data directory path")
-	checkInterval   = flag.Int("checkInterval", 5, "Interval of checking latest stock data")
+	checkInterval   = flag.Int("checkInterval", 2, "Interval of checking latest stock data")
+	port            = flag.Int("port", 9888, "Port of the server")
 )
 
 var dataFileName = "favoriteStocks.json"
@@ -69,7 +70,7 @@ func main() {
 		}
 	}()
 
-	// 设置HTTP路由和处理函数
+	// 设置核心路由和处理函数
 	mux := http.NewServeMux()
 	mux.HandleFunc("/add_favorite_stock", addFavoriteStock)
 	mux.HandleFunc("/update_break_price", updateBreakPrice)
@@ -77,21 +78,21 @@ func main() {
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
 	mux.HandleFunc("/test/force_fetch", test_forceFetch)
-
+	// 跨域处理
 	corsHandler := corsWrapper(mux)
 	server := &http.Server{
-		Addr:    ":9888",
+		Addr:    fmt.Sprintf(":%d", *port),
 		Handler: corsHandler,
 	}
 
-	// 启动HTTP服务器
+	// 启动核心服务
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("ListenAndServe: ", err)
 		}
 	}()
 
-	fmt.Println("Server is running...")
+	fmt.Printf("Server is running at :%d\n", *port)
 
 	// 确保程序在接收到信号时优雅退出
 	sigCh := make(chan os.Signal, 1)
