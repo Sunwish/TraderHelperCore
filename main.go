@@ -72,6 +72,7 @@ func main() {
 
 	// 设置核心路由和处理函数
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", index)
 	mux.HandleFunc("/add_favorite_stock", addFavoriteStock)
 	mux.HandleFunc("/update_break_price", updateBreakPrice)
 	mux.HandleFunc("/get_favorite_stocks", getFavoriteStocks)

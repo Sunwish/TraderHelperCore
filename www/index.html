@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>股价预警管理</title>
+    <style>
+        body {
+            overflow: hidden;
+            touch-action: pan-y;
+            /* 禁止水平滚动 */
+            background-color: #222;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background-color: #333;
+            padding: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .data-display {
+            flex: 1;
+            padding: 16px;
+            background-color: #444;
+            border-bottom: 1px solid #333;
+        }
+
+        .stock-detail {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            align-items: center;
+        }
+
+        .stock-detail-label {
+            font-weight: bold;
+            color: #bbb;
+            width: 50%;
+            text-align: right;
+            padding-right: 8px;
+        }
+
+        .stock-detail-input {
+            width: 50%;
+            padding: 4px;
+            border: 1px solid #888;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .stock-list {
+            overflow-y: auto;
+            height: 40vh;
+            font-size: 15px;
+            /* 可根据实际需求调整高度 */
+            padding: 16px;
+            background-color: #333;
+        }
+
+        .stock-item {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            padding: 8px;
+            border-bottom: 1px solid #555;
+            cursor: pointer;
+        }
+
+        .stock-item:hover {
+            background-color: #555;
+        }
+
+        .add-button {
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            width: 48px;
+            height: 48px;
+            background-color: #007bff;
+            color: #fff;
+            /*border-radius: 50%;*/
+            text-align: center;
+            line-height: 48px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .delete-stock-btn,
+        .apply-settings-btn {
+            padding: 8px 16px;
+            margin-top: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .delete-stock-btn:hover,
+        .apply-settings-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .delete-stock-btn:disabled,
+        .apply-settings-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">股价预警管理</div>
+        <div class="data-display">
+            <div class="stock-detail">
+                <!-- 股票代码 -->
+                <div class="stock-detail-label">代码：</div>
+                <div class="stock-detail-value" id="code">-</div>
+                <!-- 股票名称 -->
+                <div class="stock-detail-label">股票名称：</div>
+                <div class="stock-detail-value" id="name">-</div>
+                <!-- 现价 -->
+                <div class="stock-detail-label">现价：</div>
+                <div class="stock-detail-value" id="current-price">-</div>
+                <!-- 上破价 -->
+                <div class="stock-detail-label">上破价：</div>
+                <input type="number" class="stock-detail-input" id="breakout-high" disabled>
+                <!-- 下破价 -->
+                <div class="stock-detail-label">下破价：</div>
+                <input type="number" class="stock-detail-input" id="breakout-low" disabled>
+                <!-- 数据时间 -->
+                <div class="stock-detail-label">数据时间：</div>
+                <div class="stock-detail-value" id="data-time">-</div>
+                <!-- 操作按钮区域 -->
+                <button class="delete-stock-btn" disabled>删除自选股</button>
+                <button class="apply-settings-btn" disabled>应用设置</button>
+            </div>
+        </div>
+        <div class="stock-list">
+            <!-- 动态填充股票列表 -->
+        </div>
+        <div class="add-button">+</div>
+    </div>
+
+    <script>
+        apiHost = '';
+
+        // To prevent the Safari bottom toolbar from obstructing the view,
+        // dynamically set the page height to the actual height.
+        const convertStyle = () => {
+            document.body.style.setProperty('height', `${window.innerHeight}px`);
+            // Update .container hight
+            const container = document.querySelector('.container');
+            container.style.setProperty('height', `100%`);
+        }
+        window.addEventListener("resize", convertStyle);
+        window.addEventListener("DOMContentLoaded", convertStyle);
+
+        // 设置计时器拉取新数据
+        setInterval(() => {
+            fetchStocksData();
+        }, 1888);
+
+        async function fetchStocksData() {
+            // 获取自选股列表数据
+            const favoriteStocks = await fetch(apiHost + '/get_favorite_stocks')
+                .then(response => response.json())
+                .catch(error => console.error('Error fetching favorite stocks:', error));
+            // 获取股票详细信息数据
+            const stockDetails = await fetch(apiHost + '/get_favorite_stocks_data')
+                .then(response => response.json())
+                .catch(error => console.error('Error fetching stock details:', error));
+
+            const stockListContainer = document.querySelector('.stock-list');
+            // 清除现有股票列表
+            stockListContainer.innerHTML = '';
+            // 渲染股票列表
+            for (const code in favoriteStocks) {
+                if (favoriteStocks.hasOwnProperty(code)) {
+                    const stockItem = document.createElement('div');
+                    stockItem.classList.add('stock-item');
+                    stockItem.dataset.code = code;
+                    stockItem.dataset.breakoutHigh = favoriteStocks[code].BreakUp;
+                    stockItem.dataset.breakoutLow = favoriteStocks[code].BreakDown;
+
+                    const detail = stockDetails[code];
+                    tempName = "-";
+                    tempLastPrice = "-";
+                    tempLastDate = "-";
+                    tempLastTime = "-";
+                    if (detail) {
+                        tempName = detail.Name;
+                        tempLastPrice = detail.LastPrice;
+                        tempLastDate = detail.LastDate;
+                        tempLastTime = detail.LastTime;
+                    } 
+                        stockItem.dataset.name = tempName;
+                        stockItem.dataset.currentPrice = tempLastPrice;
+                        stockItem.dataset.lastDate= tempLastDate;
+                        stockItem.dataset.lastTime= tempLastTime;
+                        stockItem.innerHTML = `
+            <div>${code}</div>
+            <div>${tempName}</div>
+            <div>${tempLastPrice}</div>
+            <div>${favoriteStocks[code].BreakUp}</div>
+            <div>${favoriteStocks[code].BreakDown}</div>
+          `;
+                    // 更新当前选中项的现价和数据时间
+                    if (code == document.getElementById('code').innerText) {
+                        document.getElementById('current-price').innerText = tempLastPrice;
+                        document.getElementById('data-time').innerText = tempLastDate + " " + tempLastTime;
+                    }
+
+                    stockItem.onclick = () => selectStock(stockItem);
+
+                    stockListContainer.appendChild(stockItem);
+                }
+            }
+        }
+
+        // 初始化页面时加载数据
+        window.addEventListener('DOMContentLoaded', fetchStocksData);
+
+        function selectStock(item) {
+            // 更新顶部数据展示区的内容
+            document.getElementById('code').innerText = item.dataset.code;
+            document.getElementById('name').innerText = item.dataset.name;
+            document.getElementById('current-price').innerText = item.dataset.currentPrice;
+            document.getElementById('breakout-high').value = item.dataset.breakoutHigh;
+            document.getElementById('breakout-low').value = item.dataset.breakoutLow;
+            document.getElementById('data-time').innerText = item.dataset.lastDate + " " + item.dataset.lastTime;
+            // 激活组件
+            document.getElementById('breakout-high').disabled = false;
+            document.getElementById('breakout-low').disabled = false;
+            document.querySelector('.apply-settings-btn').disabled = false;
+            document.querySelector('.delete-stock-btn').disabled = false;
+
+        }
+
+        // 添加自选股
+        document.querySelector('.add-button').addEventListener('click', async function () {
+            const code = prompt('请输入要添加的股票代码');
+            // 检查用户是否输入了股票代码
+            if (code && code.length > 0) {
+                const response = await fetch(apiHost + '/add_favorite_stock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ Code: code })
+                });
+
+                // 处理响应
+                if (response.ok) {
+                    alert('股票已成功添加到自选股列表！');
+                    // 重新加载自选股列表以显示最新数据
+                    await fetchStocksData();
+                } else {
+                    console.error('添加自选股失败:', response.body.getReader().readToEnd());
+                    alert('添加自选股失败，' + response.statusText);
+                }
+            } else {
+                alert('请输入有效的股票代码!');
+            }
+        });
+
+
+        // 删除自选股
+        document.querySelector('.delete-stock-btn').addEventListener('click', async function () {
+            // 检查用户是否选择了要删除的自选股
+            const code = document.getElementById('code').innerText;
+            const name = document.getElementById('name').innerText;
+            // 弹出提示框确认是否删除
+            const result = confirm('确认将【' + name +  '】删除吗?');
+            if (!result) {
+                return;
+            }
+            if (code && code.length > 0) {
+                const response = await fetch(apiHost + '/remove_favorite_stock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ Code: code })
+                });
+
+                // 处理响应
+                if (response.ok) {
+                    alert('股票已成功从自选股列表中删除');
+                    // 重新加载自选股列表以显示最新数据
+                    await fetchStocksData();
+                } else {
+                    console.error('删除自选股失败:', response.statusText);
+                    alert('删除自选股失败，' + response.statusText);
+                }
+            } else {
+                alert('请先选中一个自选股!');
+            }
+        });
+
+
+        // 更新预警价
+        document.querySelector('.apply-settings-btn').addEventListener('click', async function () {
+            // 检查用户是否输入了股票代码
+            const code = document.getElementById('code').innerText;
+            const breakUp = parseFloat(document.getElementById('breakout-high').value);
+            const breakDown = parseFloat(document.getElementById('breakout-low').value);
+            const currentPrice = parseFloat(document.getElementById('current-price').innerText);
+            if (code && code.length > 0) {
+                if (breakUp < breakDown) {
+                    alert('预警价设置错误，上破价不能小于下破价!');
+                    return;
+                }
+                if (currentPrice <= breakDown || currentPrice >= breakUp) {
+                    alert('现价不在预警范围内，请重新设置！');
+                    return;
+                }
+                const response = await fetch(apiHost + '/update_break_price', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ Code: code, BreakUp: breakUp, BreakDown: breakDown })
+                });
+
+                // 处理响应
+                if (response.ok) {
+                    alert('预警价格更新成功');
+                    // 重新加载自选股列表以显示最新数据
+                    await fetchStocksData();
+                } else {
+                    console.error('预警价格更新失败:', response.statusText);
+                    alert('预警价格更新失败，' + response.statusText);
+                }
+            } else {
+                alert('请先选中一个自选股!');
+            }
+        });
+    </script>
+</body>
+
+</html>
