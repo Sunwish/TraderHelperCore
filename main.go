@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -24,8 +25,9 @@ var (
 )
 
 var dataFileName = "favoriteStocks.json"
-var favoriteStocks = make(map[string]common.Stock)           // 用于存储自选股列表
-var stocksData = make(map[string]common.StockData)           // 用于存储自选股实时数据
+var favoriteStocks = make(map[string]common.Stock) // 用于存储自选股列表
+var stocksData = make(map[string]common.StockData) // 用于存储自选股实时数据
+var stocksDataMutex = sync.RWMutex{}
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
 var notifier = notifiers.NewLogNotifier()
 var tickerDuration time.Duration
@@ -75,9 +77,11 @@ func main() {
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
 	mux.HandleFunc("/test/force_fetch", test_forceFetch)
+
+	corsHandler := corsWrapper(mux)
 	server := &http.Server{
 		Addr:    ":9888",
-		Handler: mux,
+		Handler: corsHandler,
 	}
 
 	// 启动HTTP服务器
@@ -103,6 +107,21 @@ func main() {
 	fmt.Println("Server stopped.")
 }
 
+func corsWrapper(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // 允许所有源或指定具体的源地址
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	}
+}
+
 func fetchAndUpdateStockPrice(stock common.Stock) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -118,7 +137,9 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 		return
 	}
 	// update
+	stocksDataMutex.Lock()
 	stocksData[stock.Code] = newData
+	stocksDataMutex.Unlock()
 	// 判断上破下破
 	stockConfig := favoriteStocks[stock.Code]
 	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {

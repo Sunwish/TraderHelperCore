@@ -88,7 +88,9 @@ func getFavoriteStocks(w http.ResponseWriter, r *http.Request) {
 }
 
 func getFavoriteStocksData(w http.ResponseWriter, r *http.Request) {
+	stocksDataMutex.RLock()
 	stocksJson, _ := json.Marshal(stocksData)
+	defer stocksDataMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(stocksJson)
 }
@@ -109,7 +111,9 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	}
 
 	delete(favoriteStocks, stock.Code)
+	stocksDataMutex.Lock()
 	delete(stocksData, stock.Code)
+	stocksDataMutex.Unlock()
 
 	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
 
