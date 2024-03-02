@@ -49,14 +49,8 @@ func main() {
 	flag.Parse()
 	tickerDuration = time.Duration(*checkInterval) * time.Second
 
-	// 配置Pushdeer通知
-	if pushdeerBaseUrl != nil && *pushdeerBaseUrl != "" && pushdeerKey != nil && *pushdeerKey != "" {
-		notifier = notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey)
-		notifier.Notify("[TraderHelper] 预警服务已成功启动", "")
-		fmt.Println("Pushdeer notify configuration is enabled. Test notification sent.")
-	} else {
-		fmt.Println("Pushdeer notify configuration is disabled.")
-	}
+	// 配置通知
+	configNotifier()
 
 	// 载入自选股列表
 	favoriteStocks, _ = common.LoadFavoriteStocksFromFile(path.Join(*dataDirectory, dataFileName))
@@ -72,31 +66,22 @@ func main() {
 		}
 	}()
 
-	// 设置核心路由和处理函数
+	// 设置路由和处理函数
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir("./www")))
-	mux.HandleFunc("/add_favorite_stock", addFavoriteStock)
-	mux.HandleFunc("/update_break_price", updateBreakPrice)
-	mux.HandleFunc("/get_favorite_stocks", getFavoriteStocks)
-	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
-	mux.HandleFunc("/get_active_stocks", getActiveStocks)
-	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
-	mux.HandleFunc("/get_favorite_data_pack", getFavoriteDataPack)
-	mux.HandleFunc("/test/force_fetch", test_forceFetch)
+	configRoute(mux)
 	// 跨域处理
 	corsHandler := corsWrapper(mux)
+	// 构建服务
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", *port),
 		Handler: corsHandler,
 	}
-
-	// 启动核心服务
+	// 启动服务
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("ListenAndServe: ", err)
 		}
 	}()
-
 	fmt.Printf("Server is running at :%d\n", *port)
 
 	// 确保程序在接收到信号时优雅退出
@@ -113,67 +98,12 @@ func main() {
 	fmt.Println("Server stopped.")
 }
 
-func corsWrapper(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*") // 允许所有源或指定具体的源地址
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		h.ServeHTTP(w, r)
+func configNotifier() {
+	if pushdeerBaseUrl != nil && *pushdeerBaseUrl != "" && pushdeerKey != nil && *pushdeerKey != "" {
+		notifier = notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey)
+		notifier.Notify("[TraderHelper] 预警服务已成功启动", "")
+		fmt.Println("Pushdeer notify configuration is enabled. Test notification sent.")
+	} else {
+		fmt.Println("Pushdeer notify configuration is disabled.")
 	}
-}
-
-func fetchAndUpdateStockPrice(stock common.Stock) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered from a panic:", r)
-			// notifier.Notify("[TraderHelper] Recovered from a panic!", fmt.Sprint(r))
-		}
-	}()
-
-	// fetch
-	newData := ds.GetData(stock.Code)
-	if newData.LastPrice == 0 {
-		notifier.Notify(fmt.Sprintf("[%s] 数据获取失败", stock.Code), "请检查网络连接")
-		return
-	}
-
-	// 判断上破下破，配置通知内容并记录激活状态
-	notifyTitle := ""
-	notifyMessage := ""
-	stockConfig := favoriteStocks[stock.Code]
-	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
-		activeStocksMutex.Lock()
-		activeStocks[stock.Code] = true
-		activeStocksMutex.Unlock()
-		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
-		notifyMessage = fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp)
-	}
-	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
-		activeStocksMutex.Lock()
-		activeStocks[stock.Code] = true
-		activeStocksMutex.Unlock()
-		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
-		notifyMessage = fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown)
-	}
-
-	// update
-	stocksDataMutex.Lock()
-	stocksData[stock.Code] = newData
-	stocksDataMutex.Unlock()
-
-	// notify
-	if notifyTitle != "" || notifyMessage != "" {
-		notifier.Notify(notifyTitle, notifyMessage)
-	}
-}
-
-func isCodeValid(code string) bool {
-	data := ds.GetData(code)
-	return data.LastPrice != 0
 }
