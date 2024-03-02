@@ -161,7 +161,7 @@ func configNotifierPushdeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notifier = notifiers.NewPushdeerNotifier(config.BaseURL, config.Key)
+	notifier.AddNotifier(notifiers.NewPushdeerNotifier(config.BaseURL, config.Key))
 }
 
 func test_forceFetch(w http.ResponseWriter, r *http.Request) {

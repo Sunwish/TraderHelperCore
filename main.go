@@ -32,7 +32,7 @@ var stocksDataMutex = sync.RWMutex{}
 var activeStocks = make(map[string]bool) // 用于存储触发了预警但未确认的股票列表
 var activeStocksMutex = sync.RWMutex{}
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
-var notifier = notifiers.NewLogNotifier()
+var notifier = notifiers.NewMultiNotifier(notifiers.NewLogNotifier())
 var tickerDuration time.Duration
 
 func main() {
@@ -100,8 +100,8 @@ func main() {
 
 func configNotifier() {
 	if pushdeerBaseUrl != nil && *pushdeerBaseUrl != "" && pushdeerKey != nil && *pushdeerKey != "" {
-		notifier = notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey)
-		notifier.Notify("[TraderHelper] 预警服务已成功启动", "")
+		notifier.AddNotifier(notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey))
+		notifier.Notify("[TraderHelper] Pushdeer 预警成功启动", "")
 		fmt.Println("Pushdeer notify configuration is enabled. Test notification sent.")
 	} else {
 		fmt.Println("Pushdeer notify configuration is disabled.")
