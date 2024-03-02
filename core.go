@@ -35,7 +35,7 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 		activeStocksMutex.Lock()
 		activeStocks[stock.Code] = true
 		activeStocksMutex.Unlock()
-		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
+		notifyTitle = fmt.Sprintf("[%s] %s 触发下破", newData.Code, newData.Name)
 		notifyMessage = fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown)
 	}
 
