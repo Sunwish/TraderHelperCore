@@ -104,6 +104,16 @@ func getActiveStocks(w http.ResponseWriter, r *http.Request) {
 	w.Write(stocksJson)
 }
 
+func getFavoriteDataPack(w http.ResponseWriter, r *http.Request) {
+	dataPack := &common.DataPack{
+		ActiveStocks:   activeStocks,
+		FavoriteStocks: favoriteStocks,
+		StocksData:     stocksData,
+	}
+	dataJson, _ := json.Marshal(dataPack)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(dataJson)
+}
 
 func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

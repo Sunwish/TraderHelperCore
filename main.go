@@ -81,6 +81,7 @@ func main() {
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
 	mux.HandleFunc("/get_active_stocks", getActiveStocks)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
+	mux.HandleFunc("/get_favorite_data_pack", getFavoriteDataPack)
 	mux.HandleFunc("/test/force_fetch", test_forceFetch)
 	// 跨域处理
 	corsHandler := corsWrapper(mux)

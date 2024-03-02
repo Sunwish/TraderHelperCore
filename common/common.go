@@ -22,6 +22,12 @@ type StockData struct {
 	LastTime  string  // 最新时间
 }
 
+type DataPack struct {
+	FavoriteStocks map[string]Stock
+	StocksData     map[string]StockData
+	ActiveStocks   map[string]bool
+}
+
 type DataType int
 
 const (
