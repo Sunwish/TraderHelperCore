@@ -122,6 +122,23 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        .item-status-normal {
+            color: #fff;
+        }
+
+        .item-status-active {
+            color: #f8d251;
+            font-weight: 1000;
+        }
+
+        .item-status-breakUp {
+            color: #f00;
+        }
+
+        .item-status-breakDown {
+            color: #529e4e;
+        }
     </style>
 </head>
 
@@ -161,6 +178,9 @@
 
     <script>
         apiHost = '';
+        activeStocks = {};
+
+        headerDiv = document.querySelector('.header');
 
         // To prevent the Safari bottom toolbar from obstructing the view,
         // dynamically set the page height to the actual height.
@@ -179,59 +199,93 @@
         }, 1888);
 
         async function fetchStocksData() {
+            // 获取数据包
+            const favoriteDataPack = await fetch(apiHost + '/get_favorite_data_pack')
+                .then(response => response.json())
+                .catch(error => console.error('Error fetching favorite data pack:', error));
+            if (!favoriteDataPack) {
+                headerDiv.innerHTML = '[未连接]';
+                return;
+            } else {
+                headerDiv.innerHTML = "股价预警管理";
+            }
             // 获取自选股列表数据
-            const favoriteStocks = await fetch(apiHost + '/get_favorite_stocks')
-                .then(response => response.json())
-                .catch(error => console.error('Error fetching favorite stocks:', error));
+            const favoriteStocks = favoriteDataPack.FavoriteStocks;
             // 获取股票详细信息数据
-            const stockDetails = await fetch(apiHost + '/get_favorite_stocks_data')
-                .then(response => response.json())
-                .catch(error => console.error('Error fetching stock details:', error));
+            const stockDetails = favoriteDataPack.StocksData;
+            // 获取激活状态
+            activeStocks = favoriteDataPack.ActiveStocks;
+            if (Object.keys(activeStocks).length > 0) {
+                notify("有未处理的自选股预警", "", "");
+            }
 
             const stockListContainer = document.querySelector('.stock-list');
             // 清除现有股票列表
             stockListContainer.innerHTML = '';
             // 渲染股票列表
             for (const code in favoriteStocks) {
-                if (favoriteStocks.hasOwnProperty(code)) {
-                    const stockItem = document.createElement('div');
-                    stockItem.classList.add('stock-item');
-                    stockItem.dataset.code = code;
-                    stockItem.dataset.breakoutHigh = favoriteStocks[code].BreakUp;
-                    stockItem.dataset.breakoutLow = favoriteStocks[code].BreakDown;
+                const stockItem = document.createElement('div');
+                stockItem.classList.add('stock-item');
+                stockItem.dataset.code = code;
+                stockItem.dataset.breakoutHigh = favoriteStocks[code].BreakUp;
+                stockItem.dataset.breakoutLow = favoriteStocks[code].BreakDown;
 
-                    const detail = stockDetails[code];
-                    tempName = "-";
-                    tempLastPrice = "-";
-                    tempLastDate = "-";
-                    tempLastTime = "-";
-                    if (detail) {
-                        tempName = detail.Name;
-                        tempLastPrice = detail.LastPrice;
-                        tempLastDate = detail.LastDate;
-                        tempLastTime = detail.LastTime;
-                    } 
-                        stockItem.dataset.name = tempName;
-                        stockItem.dataset.currentPrice = tempLastPrice;
-                        stockItem.dataset.lastDate= tempLastDate;
-                        stockItem.dataset.lastTime= tempLastTime;
-                        stockItem.innerHTML = `
-            <div>${code}</div>
-            <div>${tempName}</div>
-            <div>${tempLastPrice}</div>
-            <div>${favoriteStocks[code].BreakUp}</div>
-            <div>${favoriteStocks[code].BreakDown}</div>
-          `;
-                    // 更新当前选中项的现价和数据时间
-                    if (code == document.getElementById('code').innerText) {
-                        document.getElementById('current-price').innerText = tempLastPrice;
-                        document.getElementById('data-time').innerText = tempLastDate + " " + tempLastTime;
+                const detail = stockDetails[code];
+                tempName = "-";
+                tempLastPrice = "-";
+                tempLastDate = "-";
+                tempLastTime = "-";
+                if (detail) {
+                    tempName = detail.Name;
+                    tempLastPrice = detail.LastPrice;
+                    tempLastDate = detail.LastDate;
+                    tempLastTime = detail.LastTime;
+                    if (favoriteStocks[code].BreakUp > 0 && detail.LastPrice >= favoriteStocks[code].BreakUp) {
+                        stockItem.classList.add('item-status-breakUp');
+                    } else if (favoriteStocks[code].BreakDown > 0 && detail.LastPrice <= favoriteStocks[code].BreakDown) {
+                        stockItem.classList.add('item-status-breakDown');
+                    } else {
+                        stockItem.classList.add('item-status-normal');
                     }
-
-                    stockItem.onclick = () => selectStock(stockItem);
-
-                    stockListContainer.appendChild(stockItem);
                 }
+                stockItem.dataset.name = tempName;
+                stockItem.dataset.currentPrice = tempLastPrice;
+                stockItem.dataset.lastDate = tempLastDate;
+                stockItem.dataset.lastTime = tempLastTime;
+
+                const stockItemCode = document.createElement('div');
+                stockItemCode.innerHTML = `${code}`
+                stockItem.appendChild(stockItemCode);
+                const stockItemName = document.createElement('div');
+                stockItemName.innerHTML = `${tempName}`;
+                stockItem.appendChild(stockItemName);
+                const stockItemLastPrice = document.createElement('div');
+                stockItemLastPrice.innerHTML = `${tempLastPrice}`;
+                stockItem.appendChild(stockItemLastPrice);
+                const stockItemBreakUp = document.createElement('div');
+                stockItemBreakUp.innerHTML = `${favoriteStocks[code].BreakUp}`;
+                stockItem.appendChild(stockItemBreakUp);
+                const stockItemBreakDown = document.createElement('div');
+                stockItemBreakDown.innerHTML = `${favoriteStocks[code].BreakDown}`;
+                stockItem.appendChild(stockItemBreakDown);
+
+                // 判断activeStocks是否包含属性code
+                if (activeStocks.hasOwnProperty(code)) {
+                    stockItemCode.classList.add('item-status-active');
+                    stockItemCode.innerHTML = "[未确认]";
+                    stockItem.dataset.lastDate = "【请应用设置以确认】";
+                    stockItem.dataset.lastTime = "";
+                }
+
+                // 更新当前选中项的现价和数据时间
+                if (code == document.getElementById('code').innerText) {
+                    document.getElementById('current-price').innerText = tempLastPrice;
+                    document.getElementById('data-time').innerText = stockItem.dataset.lastDate + " " + stockItem.dataset.lastTime;
+                }
+
+                stockItem.onclick = () => selectStock(stockItem);
+
+                stockListContainer.appendChild(stockItem);
             }
         }
 
@@ -251,7 +305,6 @@
             document.getElementById('breakout-low').disabled = false;
             document.querySelector('.apply-settings-btn').disabled = false;
             document.querySelector('.delete-stock-btn').disabled = false;
-
         }
 
         // 添加自选股
@@ -288,7 +341,7 @@
             const code = document.getElementById('code').innerText;
             const name = document.getElementById('name').innerText;
             // 弹出提示框确认是否删除
-            const result = confirm('确认将【' + name +  '】删除吗?');
+            const result = confirm('确认将【' + name + '】删除吗?');
             if (!result) {
                 return;
             }
@@ -324,7 +377,7 @@
             const breakDown = parseFloat(document.getElementById('breakout-low').value);
             const currentPrice = parseFloat(document.getElementById('current-price').innerText);
             if (code && code.length > 0) {
-                if (breakUp < breakDown) {
+                if (breakUp > 0 && breakDown > 0 && breakUp < breakDown) {
                     alert('预警价设置错误，上破价不能小于下破价!');
                     return;
                 }
@@ -353,6 +406,27 @@
                 alert('请先选中一个自选股!');
             }
         });
+
+        function notify(title, body, icon) {
+            try {
+                if (window.Notification.permission == "granted") { // 判断是否有权限
+                    sendNotification(title, body, icon);
+                } else if (window.Notification.permission != "denied") {
+                    window.Notification.requestPermission(function (permission) { // 没有权限发起请求
+                        sendNotification(title, body, icon);
+                    });
+                }
+            } catch (error) {
+                // I don't care
+            }
+        }
+
+        function sendNotification(title, body, icon) {
+            new Notification(title, {
+                body: body,
+                icon: icon
+            })
+        }
     </script>
 </body>
 
