@@ -2,6 +2,7 @@ package main
 
 import (
 	"TraderHelperCore/common"
+	notifiers "TraderHelperCore/staging/notifier"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -138,6 +139,29 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
 
 	fmt.Println(len(favoriteStocks), "成功删除自选股", stock.Code)
+}
+
+func configNotifierPushdeer(w http.ResponseWriter, r *http.Request) {
+	// 解析请求参数，找到指定自选股并更新其上破价或下破价
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var config common.PushDeerConfig
+	err := json.NewDecoder(r.Body).Decode(&config)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("非法的请求数据"))
+		return
+	}
+
+	if config.BaseURL == "" || config.Key == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("BaseURL和Key不能为空"))
+		return
+	}
+
+	notifier = notifiers.NewPushdeerNotifier(config.BaseURL, config.Key)
 }
 
 func test_forceFetch(w http.ResponseWriter, r *http.Request) {

@@ -48,6 +48,11 @@ type FormatTask struct {
 	TargetType DataType
 }
 
+type PushDeerConfig struct {
+	BaseURL string
+	Key     string
+}
+
 func GetDataTypeByCode(code string) DataType {
 	switch {
 	case code[:1] == "6" || code[:1] == "0" || code[:1] == "3" || code[:1] == "9":
