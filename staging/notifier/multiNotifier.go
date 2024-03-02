@@ -1,12 +1,15 @@
 package notifier
 
-import "TraderHelperCore/api"
+import (
+	"TraderHelperCore/api"
+)
 
 type NotifierType int
 
 const (
 	NotifierTypeLog NotifierType = iota
 	NotifierTypePushDeer
+	NotifierTypeTcp
 )
 
 type notifierConfig struct {
@@ -42,6 +45,8 @@ func getNotifierType(n api.Notifier) NotifierType {
 		return NotifierTypePushDeer
 	case *logNotifier:
 		return NotifierTypeLog
+	case *tcpNotifier:
+		return NotifierTypeTcp
 	default:
 		panic("unknown notifier type")
 	}
