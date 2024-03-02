@@ -7,10 +7,6 @@ import (
 	"net/http"
 )
 
-func index(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "./www/index.html")
-}
-
 func addFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
