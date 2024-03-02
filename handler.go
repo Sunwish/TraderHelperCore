@@ -73,6 +73,7 @@ func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
 		favoriteStocks[stock.Code] = stock
 
 		common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
+		delete(activeStocks, stock.Code)
 
 		fmt.Println(len(favoriteStocks), "成功更新自选股", oldStock, "→", stock)
 	} else {
@@ -98,6 +99,15 @@ func getFavoriteStocksData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(stocksJson)
 }
+
+func getActiveStocks(w http.ResponseWriter, r *http.Request) {
+	activeStocksMutex.RLock()
+	stocksJson, _ := json.Marshal(activeStocks)
+	defer activeStocksMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(stocksJson)
+}
+
 
 func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

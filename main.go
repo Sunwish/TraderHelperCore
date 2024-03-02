@@ -29,6 +29,8 @@ var dataFileName = "favoriteStocks.json"
 var favoriteStocks = make(map[string]common.Stock) // 用于存储自选股列表
 var stocksData = make(map[string]common.StockData) // 用于存储自选股实时数据
 var stocksDataMutex = sync.RWMutex{}
+var activeStocks = make(map[string]bool) // 用于存储触发了预警但未确认的股票列表
+var activeStocksMutex = sync.RWMutex{}
 var ds = dataSource.NewDataSource(dataSource.SOURCE_TENCENT) // 数据源
 var notifier = notifiers.NewLogNotifier()
 var tickerDuration time.Duration
@@ -77,6 +79,7 @@ func main() {
 	mux.HandleFunc("/update_break_price", updateBreakPrice)
 	mux.HandleFunc("/get_favorite_stocks", getFavoriteStocks)
 	mux.HandleFunc("/get_favorite_stocks_data", getFavoriteStocksData)
+	mux.HandleFunc("/get_active_stocks", getActiveStocks)
 	mux.HandleFunc("/remove_favorite_stock", removeFavoriteStock)
 	mux.HandleFunc("/test/force_fetch", test_forceFetch)
 	// 跨域处理
@@ -138,17 +141,34 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 		notifier.Notify(fmt.Sprintf("[%s] 数据获取失败", stock.Code), "请检查网络连接")
 		return
 	}
+
+	// 判断上破下破，配置通知内容并记录激活状态
+	notifyTitle := ""
+	notifyMessage := ""
+	stockConfig := favoriteStocks[stock.Code]
+	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
+		activeStocksMutex.Lock()
+		activeStocks[stock.Code] = true
+		activeStocksMutex.Unlock()
+		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
+		notifyMessage = fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp)
+	}
+	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
+		activeStocksMutex.Lock()
+		activeStocks[stock.Code] = true
+		activeStocksMutex.Unlock()
+		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
+		notifyMessage = fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown)
+	}
+
 	// update
 	stocksDataMutex.Lock()
 	stocksData[stock.Code] = newData
 	stocksDataMutex.Unlock()
-	// 判断上破下破
-	stockConfig := favoriteStocks[stock.Code]
-	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
-		notifier.Notify(fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name), fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp))
-	}
-	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
-		notifier.Notify(fmt.Sprintf("[%s] %s 触发下破", newData.Code, newData.Name), fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown))
+
+	// notify
+	if notifyTitle != "" || notifyMessage != "" {
+		notifier.Notify(notifyTitle, notifyMessage)
 	}
 }
 
