@@ -12,6 +12,10 @@ func NewLogNotifier() api.Notifier {
 	return &logNotifier{}
 }
 
-func (logNotifier) Notify(title string, content string) {
-	fmt.Printf("title: %s\nmessage: %s\n", title, content)
+func (logNotifier) Notify(notification api.Notification) {
+	if notification.Ext.Type == api.NotificationTypeLog {
+		fmt.Print(notification.Title)
+	} else {
+		fmt.Printf("title: %s\nmessage: %s\n", notification.Title, notification.Content)
+	}
 }

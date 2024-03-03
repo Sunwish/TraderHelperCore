@@ -31,10 +31,10 @@ func NewMultiNotifier(notifiers ...api.Notifier) *multiNotifier {
 	return m
 }
 
-func (m multiNotifier) Notify(title string, message string) {
+func (m multiNotifier) Notify(notification api.Notification) {
 	for _, notifier := range m.notifiers {
 		if notifier.Enable {
-			notifier.Notifier.Notify(title, message)
+			notifier.Notifier.Notify(notification)
 		}
 	}
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"TraderHelperCore/api"
 	"TraderHelperCore/common"
+	n "TraderHelperCore/staging/notification"
 	"fmt"
 )
 
@@ -16,27 +18,32 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 	// fetch
 	newData := ds.GetData(stock.Code)
 	if newData.LastPrice == 0 {
-		notifier.Notify(fmt.Sprintf("[%s] 数据获取失败", stock.Code), "请检查网络连接")
+		title := fmt.Sprintf("[%s] 数据获取失败", stock.Code)
+		content := "请检查网络连接"
+		notification := n.MakeNotification(title, content, n.WithExtType(api.NotificationTypeNetwork))
+		notifier.Notify(*notification)
 		return
 	}
 
 	// 判断上破下破，配置通知内容并记录激活状态
 	notifyTitle := ""
-	notifyMessage := ""
+	notifyContent := ""
 	stockConfig := favoriteStocks[stock.Code]
+	breakDirection := 0
 	if stockConfig.BreakUp > 0 && newData.LastPrice >= stockConfig.BreakUp {
 		activeStocksMutex.Lock()
 		activeStocks[stock.Code] = true
 		activeStocksMutex.Unlock()
+		breakDirection = 1
 		notifyTitle = fmt.Sprintf("[%s] %s 触发上破", newData.Code, newData.Name)
-		notifyMessage = fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp)
+		notifyContent = fmt.Sprintf("现价：%f，上破 %f", newData.LastPrice, stockConfig.BreakUp)
 	}
 	if stockConfig.BreakDown > 0 && newData.LastPrice <= stockConfig.BreakDown {
 		activeStocksMutex.Lock()
 		activeStocks[stock.Code] = true
 		activeStocksMutex.Unlock()
 		notifyTitle = fmt.Sprintf("[%s] %s 触发下破", newData.Code, newData.Name)
-		notifyMessage = fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown)
+		notifyContent = fmt.Sprintf("现价：%f，下破 %f", newData.LastPrice, stockConfig.BreakDown)
 	}
 
 	// update
@@ -45,8 +52,9 @@ func fetchAndUpdateStockPrice(stock common.Stock) {
 	stocksDataMutex.Unlock()
 
 	// notify
-	if notifyTitle != "" || notifyMessage != "" {
-		notifier.Notify(notifyTitle, notifyMessage)
+	if notifyTitle != "" || notifyContent != "" {
+		notification := n.MakeNotification(notifyTitle, notifyContent, n.WithExtType(api.NotificationTypeBreak), n.WithExtCode(breakDirection))
+		notifier.Notify(*notification)
 	}
 }
 

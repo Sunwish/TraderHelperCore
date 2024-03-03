@@ -1,13 +1,14 @@
 package main
 
 import (
+	"TraderHelperCore/api"
 	"TraderHelperCore/common"
 	"TraderHelperCore/staging/dataSource"
+	n "TraderHelperCore/staging/notification"
 	notifiers "TraderHelperCore/staging/notifier"
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -40,12 +41,13 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println("Recovered from a panic:", r)
-			notifier.Notify("[TraderHelper] Recovered from a panic!", fmt.Sprint(r))
+			notification := n.MakeNotification("Recovered from a panic!", fmt.Sprint(r), n.WithExtType(api.NotificationTypeSystem))
+			notifier.Notify(*notification)
 		}
 	}()
 
 	// 解析启动参数
-	fmt.Println("Parsing flags...")
+	Logln("Parsing flags...")
 	flag.Parse()
 	tickerDuration = time.Duration(*checkInterval) * time.Second
 
@@ -79,10 +81,12 @@ func main() {
 	// 启动服务
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("ListenAndServe: ", err)
+			notification := n.MakeNotification("Fail to ListenAndServe", err.Error(), n.WithExtType(api.NotificationTypeSystem), n.WithExtCode(int(api.NotificationCodeServerStartupFail)))
+			notifier.Notify(*notification)
+			LogFatal("ListenAndServe: ", err)
 		}
 	}()
-	fmt.Printf("Server is running at :%d\n", *port)
+	Logf("Server is running at :%d\n", *port)
 
 	// 确保程序在接收到信号时优雅退出
 	sigCh := make(chan os.Signal, 1)
@@ -92,18 +96,22 @@ func main() {
 	ticker.Stop()
 	// 关闭HTTP服务器
 	if err := server.Shutdown(context.Background()); err != nil {
-		log.Fatal("Server Shutdown: ", err)
+		LogFatal("Server Shutdown: ", err)
 	}
 
-	fmt.Println("Server stopped.")
+	Logln("Server stopped.")
 }
 
 func configNotifier() {
+	// Pushdeer Notifier
 	if pushdeerBaseUrl != nil && *pushdeerBaseUrl != "" && pushdeerKey != nil && *pushdeerKey != "" {
 		notifier.AddNotifier(notifiers.NewPushdeerNotifier(*pushdeerBaseUrl, *pushdeerKey))
-		notifier.Notify("[TraderHelper] Pushdeer 预警成功启动", "")
-		fmt.Println("Pushdeer notify configuration is enabled. Test notification sent.")
+		notifier.Notify(*n.MakeNotification("Pushdeer 预警服务成功启动", ""))
+		Logln("Pushdeer notify configuration is enabled. Test notification sent.")
 	} else {
-		fmt.Println("Pushdeer notify configuration is disabled.")
+		Logln("Pushdeer notify configuration is disabled.")
 	}
+
+	// TCP Notifier
+	notifier.AddNotifier(notifiers.NewTcpNotifier(49121))
 }

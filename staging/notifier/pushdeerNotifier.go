@@ -19,8 +19,8 @@ func NewPushdeerNotifier(baseUrl string, appKey string) api.Notifier {
 	}
 }
 
-func (p pushdeerNotifier) Notify(title string, message string) {
-	fullUrl := p.baseUrl + "push?pushkey=" + p.appKey + "&text=" + url.QueryEscape(title) + "&desp=" + url.QueryEscape(message) + "&type=markdown"
+func (p pushdeerNotifier) Notify(notification api.Notification) {
+	fullUrl := p.baseUrl + "push?pushkey=" + p.appKey + "&text=" + url.QueryEscape(notification.Title) + "&desp=" + url.QueryEscape(notification.Content) + "&type=markdown"
 	response, err := http.Get(fullUrl)
 	if err != nil {
 		fmt.Println("消息推送失败：", err)

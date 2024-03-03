@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"TraderHelperCore/api"
+	"encoding/json"
 	"fmt"
 	"net"
 )
@@ -32,9 +33,10 @@ func NewTcpNotifier(port int) api.Notifier {
 	return notifier
 }
 
-func (sn tcpNotifier) Notify(title string, content string) {
+func (sn tcpNotifier) Notify(notification api.Notification) {
 	if sn.client == nil {
 		return
 	}
-	_, _ = sn.client.Write([]byte(fmt.Sprintf("%s&&%s\n", title, content)))
+	bytes, _ := json.Marshal(notification)
+	_, _ = sn.client.Write([]byte(string(bytes) + "\n"))
 }

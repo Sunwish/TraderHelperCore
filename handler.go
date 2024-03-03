@@ -4,7 +4,6 @@ import (
 	"TraderHelperCore/common"
 	notifiers "TraderHelperCore/staging/notifier"
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -40,7 +39,7 @@ func addFavoriteStock(w http.ResponseWriter, r *http.Request) {
 	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
 
 	// 打印：成功添加 newStock 到自选股列表
-	fmt.Println(len(favoriteStocks), "成功添加自选股", newStock)
+	Logln(len(favoriteStocks), "成功添加自选股", newStock)
 }
 
 func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
@@ -72,9 +71,9 @@ func updateBreakPrice(w http.ResponseWriter, r *http.Request) {
 		common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
 		delete(activeStocks, stock.Code)
 
-		fmt.Println(len(favoriteStocks), "成功更新自选股", oldStock, "→", stock)
+		Logln(len(favoriteStocks), "成功更新自选股", oldStock, "→", stock)
 	} else {
-		fmt.Println(len(favoriteStocks), "指定要更新的自选股", newStock.Code, "不存在")
+		Logln(len(favoriteStocks), "指定要更新的自选股", newStock.Code, "不存在")
 
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("该自选股不存在"))
@@ -138,7 +137,7 @@ func removeFavoriteStock(w http.ResponseWriter, r *http.Request) {
 
 	common.SaveFavoriteStocksToFile(favoriteStocks, *dataDirectory, dataFileName)
 
-	fmt.Println(len(favoriteStocks), "成功删除自选股", stock.Code)
+	Logln(len(favoriteStocks), "成功删除自选股", stock.Code)
 }
 
 func configNotifierPushdeer(w http.ResponseWriter, r *http.Request) {
